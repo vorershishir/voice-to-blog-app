@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice-to-Blog Creator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'gemini-blue': '#4285F4',
+                        'gemini-dark': '#1e293b',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        .loading-dot {
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 sm:p-8 font-sans">
+
+    <div id="app" class="max-w-4xl mx-auto bg-white shadow-xl rounded-xl p-6 md:p-10">
+
+        <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2 border-b-2 border-gemini-blue pb-2">
+            Voice-to-Blog AI
+        </h1>
+        <p class="text-gray-600 mb-8">Speak your thoughts, and let Gemini turn them into a polished blog post.</p>
+
+        <!-- Status Message Area -->
+        <div id="message-box" class="mb-6 hidden">
+            <div id="message-content" class="p-3 text-sm rounded-lg" role="alert"></div>
+        </div>
+        
+        <!-- 0. Subscription Status Section (New) -->
+        <div class="mb-8 border p-6 rounded-lg bg-yellow-50">
+            <h2 class="text-2xl font-semibold text-gemini-dark mb-4">0. Subscription Status</h2>
+            <div id="user-info" class="mb-3 text-sm text-gray-700">
+                <p>User ID: <span id="user-id" class="font-mono text-xs bg-gray-200 px-1 py-0.5 rounded">Loading...</span></p>
+                <p>Status: <span id="subscription-status" class="font-bold">Loading...</span></p>
+            </div>
+
+            <button id="subscribe-btn" disabled
+                    class="w-full sm:w-auto py-2 px-4 bg-purple-600 text-white font-bold rounded-lg shadow-md hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                Go Premium (Simulated Subscribe)
+            </button>
+        </div>
+
+
+        <!-- 1. Voice Recording Section -->
+        <div class="mb-8 border p-6 rounded-lg bg-blue-50">
+            <h2 class="text-2xl font-semibold text-gemini-dark mb-4">1. Record Your Draft</h2>
+
+            <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                <button id="start-recording"
+                        class="flex-1 py-3 px-6 bg-gemini-blue text-white font-bold rounded-lg shadow-md hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg class="inline w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a4 4 0 00-4 4v4m4-4V7a4 4 0 014 4z"></path></svg>
+                    Start Recording
+                </button>
+                <button id="stop-recording" disabled
+                        class="flex-1 py-3 px-6 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg class="inline w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path></svg>
+                    Stop Recording
+                </button>
+            </div>
+
+            <textarea id="transcript-input" placeholder="Your voice transcript will appear here. Edit as needed before generating the blog."
+                      class="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-gemini-blue focus:border-gemini-blue text-gray-800 resize-none"></textarea>
+        </div>
+
+        <!-- 2. Blog Generation Section -->
+        <div class="mb-8 border p-6 rounded-lg bg-green-50">
+            <h2 class="text-2xl font-semibold text-gemini-dark mb-4">2. Generate Blog Post (Free Feature)</h2>
+            <button id="generate-blog" disabled
+                    class="w-full py-3 px-6 bg-green-500 text-white font-bold rounded-lg shadow-md hover:bg-green-600 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                ✨ Generate Blog Post
+            </button>
+        </div>
+
+        <!-- 3. Result Display Section -->
+        <div class="border p-6 rounded-lg bg-gray-50 min-h-[300px] mb-8">
+            <h2 class="text-2xl font-semibold text-gemini-dark mb-4">3. Final Blog Post</h2>
+
+            <div id="blog-output" class="prose max-w-none p-4 bg-white border border-gray-200 rounded-lg min-h-[200px] mb-6">
+                <p class="text-gray-500 italic">The polished, AI-generated blog post will appear here.</p>
+            </div>
+
+            <!-- 4. Editing Tools Section (New) -->
+            <div id="editing-tools" class="mt-4 pt-4 border-t border-gray-200 hidden">
+                <h2 class="text-xl font-semibold text-gemini-dark mb-4">4. Editing & Optimization Tools (Premium)</h2>
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <button id="summarize-btn" disabled
+                            class="flex-1 py-2 px-4 bg-yellow-500 text-white font-medium rounded-lg shadow hover:bg-yellow-600 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                        ✨ Summarize Blog
+                    </button>
+                    <button id="ideas-btn" disabled
+                            class="flex-1 py-2 px-4 bg-indigo-500 text-white font-medium rounded-lg shadow hover:bg-indigo-600 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                        ✨ Brainstorm Titles & Keywords
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dedicated Output Area for Editing Tools (New) -->
+            <div id="editing-output" class="prose max-w-none p-4 bg-white border border-gray-200 rounded-lg mt-6 hidden">
+                <!-- Content will be injected here -->
+            </div>
+
+            <div id="loading-indicator" class="hidden text-center mt-8 p-4 bg-white rounded-lg shadow-inner">
+                <p class="text-lg font-medium text-gemini-blue">
+                    AI Editor is polishing your draft...
+                </p>
+                <div class="flex justify-center space-x-2 mt-2">
+                    <div class="loading-dot w-3 h-3 bg-gemini-blue rounded-full"></div>
+                    <div class="loading-dot w-3 h-3 bg-gemini-blue rounded-full"></div>
+                    <div class="loading-dot w-3 h-3 bg-gemini-blue rounded-full"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- FIREBASE IMPORTS ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        setLogLevel('Debug'); // Enable Firestore logging
+
+        // --- GLOBAL VARIABLES (Provided by Canvas Environment) ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+        // --- FIREBASE INSTANCES & STATE ---
+        let db = null;
+        let auth = null;
+        let currentUserId = null;
+        let isPremium = false;
+
+
+        // --- DOM Elements ---
+        const startRecordingBtn = document.getElementById('start-recording');
+        const stopRecordingBtn = document.getElementById('stop-recording');
+        const transcriptInput = document.getElementById('transcript-input');
+        const generateBlogBtn = document.getElementById('generate-blog');
+        const blogOutput = document.getElementById('blog-output');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const messageBox = document.getElementById('message-box');
+        const messageContent = document.getElementById('message-content');
+        const summarizeBtn = document.getElementById('summarize-btn');
+        const ideasBtn = document.getElementById('ideas-btn');
+        const editingOutput = document.getElementById('editing-output');
+        const editingTools = document.getElementById('editing-tools');
+        
+        // Subscription DOM Elements
+        const userIdSpan = document.getElementById('user-id');
+        const subscriptionStatusSpan = document.getElementById('subscription-status');
+        const subscribeBtn = document.getElementById('subscribe-btn');
+
+        // Check for Speech Recognition API support
+        window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (!window.SpeechRecognition) {
+            showMessage('Error: Your browser does not support the Web Speech API required for recording.', 'bg-red-100 border border-red-400 text-red-700');
+            startRecordingBtn.disabled = true;
+        } else {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false; // Stop after a pause
+            recognition.interimResults = false; // Only return the final result
+            recognition.lang = 'en-US';
+
+            let isRecording = false;
+
+            // --- Utility Functions ---
+
+            function showMessage(text, className) {
+                messageContent.textContent = text;
+                messageContent.className = `p-3 text-sm rounded-lg ${className}`;
+                messageBox.classList.remove('hidden');
+                setTimeout(() => messageBox.classList.add('hidden'), 5000);
+            }
+
+            function setRecordingState(recording) {
+                isRecording = recording;
+                startRecordingBtn.disabled = recording;
+                stopRecordingBtn.disabled = !recording;
+                if (!recording && transcriptInput.value.trim().length > 0) {
+                    generateBlogBtn.disabled = false;
+                } else {
+                    generateBlogBtn.disabled = true;
+                }
+            }
+
+            function enableEditingTools(enabled) {
+                // Only enable if the user is premium AND the button is supposed to be enabled (i.e., not loading)
+                const finalEnabled = enabled && isPremium;
+                summarizeBtn.disabled = !finalEnabled;
+                ideasBtn.disabled = !finalEnabled;
+            }
+
+            function updateSubscriptionUI() {
+                if (!db) return; // Wait for Firebase init
+                
+                userIdSpan.textContent = currentUserId || 'N/A';
+                
+                if (isPremium) {
+                    subscriptionStatusSpan.textContent = 'Premium';
+                    subscriptionStatusSpan.classList.add('text-green-600');
+                    subscriptionStatusSpan.classList.remove('text-red-600');
+                    subscribeBtn.classList.add('hidden');
+                    editingTools.classList.remove('hidden');
+                } else {
+                    subscriptionStatusSpan.textContent = 'Free';
+                    subscriptionStatusSpan.classList.add('text-red-600');
+                    subscriptionStatusSpan.classList.remove('text-green-600');
+                    subscribeBtn.classList.remove('hidden');
+                    editingTools.classList.add('hidden');
+                }
+                subscribeBtn.disabled = false;
+            }
+
+
+            function setLoading(isLoading, tool = 'blog') {
+                loadingIndicator.classList.toggle('hidden', !isLoading);
+                generateBlogBtn.disabled = isLoading;
+                startRecordingBtn.disabled = isLoading || isRecording;
+                stopRecordingBtn.disabled = isLoading || !isRecording;
+                
+                enableEditingTools(!isLoading);
+
+                if (tool === 'blog' && isLoading) {
+                    blogOutput.innerHTML = '';
+                    editingOutput.classList.add('hidden');
+                } else if (tool !== 'blog' && isLoading) {
+                    editingOutput.innerHTML = '';
+                    editingOutput.classList.remove('hidden');
+                }
+            }
+            
+            // Function to convert simple markdown to basic HTML for display
+            function markdownToHtml(markdown) {
+                let htmlContent = markdown;
+                htmlContent = htmlContent.replace(/^##\s*(.*)$/gm, (match, title) => `<h3>${title}</h3>`); 
+                htmlContent = htmlContent.replace(/^\*\s*(.*)$/gm, '<li>$1</li>'); 
+                htmlContent = htmlContent.replace(/\n\n/g, '</p><p>'); 
+                htmlContent = htmlContent.replace(/\n/g, '<br>');
+                if (!htmlContent.startsWith('<h') && !htmlContent.startsWith('<li>') && !htmlContent.startsWith('<p>')) {
+                    htmlContent = `<p>${htmlContent}</p>`;
+                }
+                return htmlContent;
+            }
+
+
+            // --- FIREBASE LOGIC ---
+
+            async function initFirebase() {
+                try {
+                    if (!firebaseConfig) {
+                        throw new Error("Firebase configuration is missing.");
+                    }
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+                    
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    
+                    onAuthStateChanged(auth, (user) => {
+                        if (user) {
+                            currentUserId = user.uid;
+                            subscribeToSubscriptionStatus();
+                        } else {
+                            currentUserId = null;
+                            updateSubscriptionUI(); // Fallback if sign-in fails
+                            showMessage('Authentication failed, using default user ID.', 'bg-red-100 border border-red-400 text-red-700');
+                        }
+                    });
+
+                } catch (e) {
+                    console.error("Firebase Initialization Error:", e);
+                    showMessage(`Firebase Error: ${e.message}. Subscription features disabled.`, 'bg-red-100 border border-red-400 text-red-700');
+                    currentUserId = crypto.randomUUID(); // Fallback ID
+                    updateSubscriptionUI();
+                }
+            }
+            
+            function getSubscriptionDocRef() {
+                if (!db || !currentUserId) return null;
+                // Path: /artifacts/{appId}/users/{userId}/settings/subscription/status
+                return doc(db, 'artifacts', appId, 'users', currentUserId, 'settings', 'status');
+            }
+
+            function subscribeToSubscriptionStatus() {
+                const docRef = getSubscriptionDocRef();
+                if (!docRef) return;
+
+                onSnapshot(docRef, (docSnapshot) => {
+                    if (docSnapshot.exists()) {
+                        isPremium = docSnapshot.data().isPremium === true;
+                    } else {
+                        // Document doesn't exist, assume free user
+                        isPremium = false;
+                        // Create the default document if it doesn't exist
+                        setDoc(docRef, { isPremium: false }).catch(e => console.error("Error creating subscription doc:", e));
+                    }
+                    updateSubscriptionUI();
+                    // Re-evaluate if editing tools should be enabled based on new subscription status
+                    enableEditingTools(transcriptInput.value.trim().length > 0);
+                }, (error) => {
+                    console.error("Error fetching subscription status:", error);
+                    showMessage('Failed to load subscription status.', 'bg-red-100 border border-red-400 text-red-700');
+                });
+            }
+
+            async function toggleSubscription() {
+                if (!db || !currentUserId) {
+                    showMessage('User is not initialized. Please wait or refresh.', 'bg-red-100 border border-red-400 text-red-700');
+                    return;
+                }
+                
+                const newStatus = !isPremium;
+                const docRef = getSubscriptionDocRef();
+
+                try {
+                    subscribeBtn.disabled = true;
+                    await setDoc(docRef, { isPremium: newStatus });
+                    showMessage(`Subscription updated to: ${newStatus ? 'Premium' : 'Free'}!`, 'bg-green-100 border border-green-400 text-green-700');
+                } catch (e) {
+                    console.error("Error updating subscription:", e);
+                    showMessage('Failed to update subscription status. Try again.', 'bg-red-100 border border-red-400 text-red-700');
+                    subscribeBtn.disabled = false;
+                }
+                // UI will be updated by the onSnapshot listener
+            }
+
+            // --- Speech Recognition Handlers (No change needed) ---
+
+            recognition.onstart = () => {
+                setRecordingState(true);
+                transcriptInput.value = '';
+                showMessage('Listening... Speak now.', 'bg-yellow-100 border border-yellow-400 text-yellow-700');
+            };
+
+            recognition.onresult = (event) => {
+                const speechResult = event.results[0][0].transcript;
+                transcriptInput.value = speechResult;
+            };
+
+            recognition.onerror = (event) => {
+                setRecordingState(false);
+                showMessage(`Speech recognition error: ${event.error}`, 'bg-red-100 border border-red-400 text-red-700');
+            };
+
+            recognition.onend = () => {
+                setRecordingState(false);
+                if (transcriptInput.value.trim().length > 0) {
+                    showMessage('Recording finished. Transcript ready for editing.', 'bg-green-100 border border-green-400 text-green-700');
+                } else {
+                    showMessage('Recording stopped. No speech detected.', 'bg-red-100 border border-red-400 text-red-700');
+                }
+            };
+
+            // --- Gemini API Handler Functions ---
+
+            async function geminiApiCall(systemPrompt, userQuery, tool) {
+                // ... (API call logic remains the same)
+                const payload = {
+                    contents: [{ parts: [{ text: userQuery }] }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                };
+
+                let response;
+                let maxRetries = 3;
+                let delay = 1000;
+
+                for (let i = 0; i < maxRetries; i++) {
+                    try {
+                        response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (response.status === 429) {
+                            if (i < maxRetries - 1) {
+                                await new Promise(resolve => setTimeout(resolve, delay));
+                                delay *= 2;
+                                continue;
+                            } else {
+                                throw new Error("API rate limit exceeded after multiple retries.");
+                            }
+                        }
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+
+                        const result = await response.json();
+                        const candidate = result.candidates?.[0];
+
+                        if (candidate && candidate.content?.parts?.[0]?.text) {
+                            return candidate.content.parts[0].text;
+                        } else {
+                            throw new Error("Received empty or malformed response from the AI.");
+                        }
+
+                    } catch (error) {
+                        console.error(`Gemini API Call Error (${tool}):`, error);
+                        throw error;
+                    }
+                }
+            }
+
+
+            async function generateBlog() {
+                const rawTranscript = transcriptInput.value.trim();
+                if (!rawTranscript) {
+                    showMessage('Please record or enter a transcript first.', 'bg-red-100 border border-red-400 text-red-700');
+                    return;
+                }
+
+                setLoading(true, 'blog');
+
+                const systemPrompt = "You are a world-class professional content editor and blogger. Your task is to take a raw, unedited speech transcript and transform it into a highly engaging, well-structured blog post. The final output must use Markdown for formatting, including a single top-level heading for the title (#) and organized paragraphs for the body. Do not include any introductory or concluding conversational text outside of the final blog post content itself.";
+                
+                const userQuery = `Take the following raw transcript and convert it into a blog post. Ensure the blog post has a compelling title, a strong introduction, and is structured into 3-5 well-written paragraphs:\n\nRAW TRANSCRIPT:\n"${rawTranscript}"`;
+
+                try {
+                    const blogText = await geminiApiCall(systemPrompt, userQuery, 'blog');
+                    
+                    let htmlContent = blogText
+                        .replace(/^#\s*(.*)$/gm, (match, title) => `<h2>${title}</h2>`) 
+                        .replace(/\n\n/g, '</p><p>') 
+                        .replace(/\n/g, '<br>') 
+                        .replace(/<p><\/p>/g, '')
+                    ;
+                    
+                    if (!htmlContent.startsWith('<p>') && !htmlContent.startsWith('<h')) {
+                        htmlContent = `<p>${htmlContent}</p>`;
+                    }
+                    
+                    blogOutput.innerHTML = htmlContent;
+                    showMessage(`Blog post generated! ${isPremium ? 'Ready for premium editing tools.' : 'Go Premium for editing tools!'}`, 'bg-blue-100 border border-blue-400 text-blue-700');
+                    enableEditingTools(true); // Enable if premium, disable otherwise
+                } catch (error) {
+                    showMessage(`Failed to generate blog: ${error.message}. Please try again.`, 'bg-red-100 border border-red-400 text-red-700');
+                } finally {
+                    setLoading(false, 'blog');
+                }
+            }
+
+            async function summarizeBlog() {
+                if (!isPremium) {
+                    showMessage('This is a Premium feature. Please subscribe!', 'bg-purple-100 border border-purple-400 text-purple-700');
+                    return;
+                }
+                const currentBlogText = blogOutput.innerText.trim();
+                if (!currentBlogText || currentBlogText.includes('AI-generated blog post will appear here')) {
+                    showMessage('Please generate the main blog post first!', 'bg-yellow-100 border border-yellow-400 text-yellow-700');
+                    return;
+                }
+
+                setLoading(true, 'summarize');
+
+                const systemPrompt = "You are a professional marketing copywriter. Your task is to analyze the provided blog post and generate a highly condensed, compelling summary suitable for social media or email. The summary must be a maximum of three concise sentences.";
+                const userQuery = `Summarize the following content into a maximum of three sentences:\n\nCONTENT:\n"${currentBlogText}"`;
+
+                try {
+                    const summaryText = await geminiApiCall(systemPrompt, userQuery, 'summarize');
+                    
+                    editingOutput.innerHTML = `
+                        <h3 class="text-lg font-bold text-gray-800 mb-2">Summary for Marketing</h3>
+                        <p class="text-gray-600">${summaryText.replace(/\n/g, ' ')}</p>
+                    `;
+                    showMessage('Summary generated!', 'bg-yellow-100 border border-yellow-400 text-yellow-700');
+                } catch (error) {
+                    showMessage(`Failed to generate summary: ${error.message}.`, 'bg-red-100 border border-red-400 text-red-700');
+                } finally {
+                    setLoading(false, 'summarize');
+                }
+            }
+
+            async function generateIdeas() {
+                 if (!isPremium) {
+                    showMessage('This is a Premium feature. Please subscribe!', 'bg-purple-100 border border-purple-400 text-purple-700');
+                    return;
+                }
+                const currentBlogText = blogOutput.innerText.trim();
+                if (!currentBlogText || currentBlogText.includes('AI-generated blog post will appear here')) {
+                    showMessage('Please generate the main blog post first!', 'bg-yellow-100 border border-yellow-400 text-yellow-700');
+                    return;
+                }
+
+                setLoading(true, 'ideas');
+
+                const systemPrompt = "You are an expert SEO specialist. Based on the provided content, your output must be two distinct sections in markdown format: '## Alternative Titles' followed by a bulleted list of 5 catchy titles, and '## Relevant Keywords' followed by a bulleted list of 10 relevant keywords/tags for SEO. Do not include any other text or conversational elements.";
+                const userQuery = `Generate alternative titles and keywords for the following content:\n\nCONTENT:\n"${currentBlogText}"`;
+
+                try {
+                    const ideasText = await geminiApiCall(systemPrompt, userQuery, 'ideas');
+                    
+                    editingOutput.innerHTML = `
+                        <h3 class="text-lg font-bold text-gray-800 mb-2">Titles & Keywords for SEO</h3>
+                        ${markdownToHtml(ideasText)}
+                    `;
+                    showMessage('Titles and Keywords brainstormed!', 'bg-indigo-100 border border-indigo-400 text-indigo-700');
+                } catch (error) {
+                    showMessage(`Failed to generate ideas: ${error.message}.`, 'bg-red-100 border border-red-400 text-red-700');
+                } finally {
+                    setLoading(false, 'ideas');
+                }
+            }
+
+            // --- Event Listeners and Init ---
+
+            startRecordingBtn.addEventListener('click', () => {
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.error("Recording error:", e);
+                }
+            });
+
+            stopRecordingBtn.addEventListener('click', () => {
+                recognition.stop();
+            });
+
+            transcriptInput.addEventListener('input', () => {
+                generateBlogBtn.disabled = transcriptInput.value.trim().length === 0;
+                // Re-evaluate editing tools based on new content availability
+                enableEditingTools(transcriptInput.value.trim().length > 0);
+            });
+
+            generateBlogBtn.addEventListener('click', generateBlog);
+            summarizeBtn.addEventListener('click', summarizeBlog);
+            ideasBtn.addEventListener('click', generateIdeas);
+            subscribeBtn.addEventListener('click', toggleSubscription);
+            
+            // Start Firebase initialization
+            initFirebase();
+            
+        }
+    </script>
+</body>
+</html>
